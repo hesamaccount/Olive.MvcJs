@@ -398,84 +398,6 @@ class BaseApplicationPage {
         });
     }
 
-    enableFileUpload(input: any) {
-        var control = input;
-        var container: JQuery = input.closest(".file-upload");
-        var del = container.find(".delete-file");
-        var idInput = container.find("input.file-id");
-        var progressBar = container.find(".progress-bar");
-
-        control.attr("data-url", "/file/upload");
-
-        // Config http://markusslima.github.io/bootstrap-filestyle/ & https://blueimp.github.io/jQuery-File-Upload/
-
-        control.filestyle({ buttonBefore: true });
-
-        container.find('.bootstrap-filestyle > input:text').wrap($("<div class='progress'></div>"));
-        container.find('.bootstrap-filestyle > .progress').prepend(progressBar);
-
-        if (idInput.val() != "REMOVE") {
-            var currentFile = container.find('.current-file > a');
-            var inputControl = container.find('.bootstrap-filestyle > .progress > input:text');
-        }
-
-        var currentFileName = currentFile ? currentFile.text() : null;
-        var hasExistingFile = currentFileName != "«UNCHANGED»" && (currentFileName != "NoFile.Empty" && currentFileName != null);
-
-        if (hasExistingFile && inputControl.val() == "") {
-            del.show();
-            progressBar.width('100%');
-            // enable Existing File Download
-            inputControl.val(currentFile.text()).removeAttr('disabled').addClass('file-target').click(() => currentFile[0].click());
-        }
-
-        var handleCurrentFileChange = () => {
-            if (hasExistingFile) {
-                inputControl.removeClass('file-target').attr('disabled', 'true').off();
-                hasExistingFile = false;
-            }
-        };
-
-        del.click((e) => {
-            del.hide();
-            idInput.val("REMOVE");
-            progressBar.width(0);
-            control.filestyle('clear');
-            handleCurrentFileChange();
-        });
-
-        var fileLabel = control.parent().find(':text');
-
-        input.fileupload({
-            dataType: 'json',
-            dropZone: container,
-            replaceFileInput: false,
-            drop: (e, data) => {
-
-                if (fileLabel.length > 0 && data.files.length > 0) {
-                    fileLabel.val(data.files.map(x => x.name));
-                }
-            },
-            change: (e, data) => { progressBar.width(0); handleCurrentFileChange(); },
-            progressall: (e, data: any) => {
-                var progress = parseInt((data.loaded / data.total * 100).toString(), 10);
-                progressBar.width(progress + '%');
-            },
-            error: (response) => { this.handleAjaxResponseError(response); fileLabel.val(''); },
-            success: (response) => {
-                if (response.Error) {
-                    this.handleAjaxResponseError({ responseText: response.Error });
-                    fileLabel.val('');
-                }
-                else {
-                    if (input.is("[multiple]")) idInput.val(idInput.val() + "|file:" + response.ID);
-                    else idInput.val("file:" + response.ID);
-                    del.show();
-                }
-            }
-        });
-    }
-
     openLinkModal(event: JQueryEventObject) {
 
         var target = $(event.currentTarget);
@@ -563,28 +485,6 @@ class BaseApplicationPage {
         this.adjustModalHeight(overflow);
     }
 
-    enableDateAndTimeControl(input: any) {
-
-        if (this.isWindowModal()) {
-            input.off("dp.show.adjustHeight").on("dp.show.adjustHeight", (e) => this.adjustModalHeightForDataPicker(e));
-            input.off("dp.hide.adjustHeight").on("dp.hide.adjustHeight", (e) => this.adjustModalHeightForDataPicker(e));
-        }
-
-        input.attr("data-autofocus", "disabled");
-
-        input.datetimepicker({
-            format: this.DATE_TIME_FORMAT,
-            useCurrent: false,
-            showTodayButton: true,
-            icons: { today: 'today' },
-            stepping: parseInt(input.attr("data-minute-steps") || this.MINUTE_INTERVALS.toString()),
-            keepInvalid: input.closest("form").find("[data-change-action]").length == 0,
-            locale: this.DATE_LOCALE
-        }).data("DateTimePicker").keyBinds().clear = null;
-
-        input.parent().find(".fa-calendar").click(function () { input.focus(); });
-    }
-
     enableTimeControl(input: any) {
 
         if (this.isWindowModal()) {
@@ -603,101 +503,6 @@ class BaseApplicationPage {
         }).data("DateTimePicker").keyBinds().clear = null;
 
         input.parent().find(".fa-clock-o").parent(".input-group-addon").click(() => { input.focus(); });
-    }
-
-    awaitingAutocompleteResponses: number = 0;
-    handleAutoComplete(input) {
-        if (input.is('[data-typeahead-enabled=true]')) return;
-        else input.attr('data-typeahead-enabled', true);
-
-        var valueField = $("[name='" + input.attr("name").slice(0, -5) + "']");
-
-        if (valueField.length == 0) console.log('Could not find the value field for auto-complete.');
-
-        var dataSource = (query, callback) => {
-            this.awaitingAutocompleteResponses++;
-
-            var url = input.attr("autocomplete-source");
-            url = urlHelper.removeQuery(url, input.attr('name')); // Remove old text.
-            var data = this.getPostData(input);
-
-            setTimeout(() => {
-                if (this.awaitingAutocompleteResponses > 1) {
-                    this.awaitingAutocompleteResponses--
-                    return;
-                }
-
-                $.post(url, data).fail(this.handleAjaxResponseError).done((result) => {
-
-                    result = result.map((i) => {
-                        return {
-                            Display: i.Display || i.Text || i.Value,
-                            Value: i.Value || i.Text || i.Display,
-                            Text: i.Text || $("<div/>").append($(i.Display)).text() || i.Value
-                        };
-                    });
-
-                    return callback(result);
-                }).always(() => this.awaitingAutocompleteResponses--);
-            }, this.AUTOCOMPLETE_INPUT_DELAY);
-        };
-
-        var clearValue = (e) => {
-            if (input.val() === "") valueField.val("");
-            if (input.val() !== input.data("selected-text")) valueField.val("");
-        };
-
-        var itemSelected = (e, item) => {
-            if (item != undefined) {
-                console.log('setting ' + item.Value);
-                valueField.val(item.Value);
-                input.data("selected-text", item.Display);
-            }
-            else {
-                console.log("Clearing text, item is undefined");
-                input.data("selected-text", "");
-            }
-
-            // This will invoke RunOnLoad M# method as typeahead does not fire textbox change event when it sets its value from drop down
-            input.trigger('change');
-        };
-
-        var itemBlured = (e, item) => {
-            if (valueField.val() == "" && input.val() != "") {
-                // this hack is so when you paste something a focus out, it should set the hidden field
-                var suggested = input.closest(".twitter-typeahead").find(".tt-suggestion");
-                var filtered = suggested.filter((e, obj) => (obj.innerText === input.val()));
-
-                if (filtered.length === 0 && suggested.length === 0) {
-                    // the suggestion list has never been shown
-
-                    // make typeahead aware of this change otherwise during blur it will clear the text
-                    input.typeahead('val', input.val());
-                    dataSource(input.val(), data => {
-                        if (data && data.length === 1) {
-                            itemSelected(null, data[0]);
-                            console.log('match text to suggestion finished');
-                        } else {
-                            console.warn("There is none or more than one items in the autocomplete data-source to match the given text. Cannot set the value.");
-                        }
-                    });
-                }
-                else {
-                    // the suggestion list has been displayed
-                    if (filtered.length === 0)
-                        suggested.first().trigger("click");
-                    else
-                        filtered.first().trigger("click");
-                }
-            }
-        };
-
-        var dataset = {
-            displayKey: 'Text', source: dataSource,
-            templates: { suggestion: (item) => item.Display, empty: "<div class='tt-suggestion'>Not found</div>" }
-        };
-
-        input.data("selected-text", "").on('input', clearValue).on('blur', itemBlured).on('typeahead:selected', itemSelected).typeahead({ minLength: 0 }, dataset);
     }
 
     handleDefaultButton(event: JQueryEventObject): boolean {
@@ -1064,28 +869,6 @@ class BaseApplicationPage {
         if ($("main").parent().is("body"))
             this.ajaxRedirect(location.href, null, false /*isBack*/, keepScroll, false /*addToHistory:*/);
         else location.reload();
-    }
-
-    getPostData(trigger: JQuery): JQuerySerializeArrayElement[] {
-
-        var form = trigger.closest("[data-module]");
-
-        if (!form.is("form")) form = $("<form />").append(form.clone(true));
-
-        var data = urlHelper.mergeFormData(form.serializeArray());
-
-        // If it's master-details, then we need the index.
-        var subFormContainer = trigger.closest(".subform-item");
-        if (subFormContainer != null) {
-            data.push({
-                name: "subFormIndex",
-                value: subFormContainer.closest(".horizontal-subform, .vertical-subform").find(".subform-item").index(subFormContainer).toString()
-            });
-        }
-
-        data.push({ name: "current.request.url", value: urlHelper.pathAndQuery() });
-
-        return data;
     }
 
     isAwaitingAjaxResponse = false;
