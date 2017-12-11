@@ -1,7 +1,6 @@
 ///<reference path="../application.urlhelper.ts"/>
 import { WindowContext as windowContext } from "../components/windowContext"
 
-export namespace Olive {
        export class AutoComplete {
            input:any;
            awaitingAutocompleteResponses: number = 0;
@@ -102,7 +101,6 @@ export namespace Olive {
                }, windowContext.setting.AUTOCOMPLETE_INPUT_DELAY);
            }
      }
-}
 
 
 
