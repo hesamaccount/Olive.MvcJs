@@ -8,6 +8,7 @@ import { WindowContext } from './Components/WindowContext'
 import { TimeControl } from './Plugins/TimeControl'
 import { AutoComplete } from './Plugins/autoComplete'
 import { Slider } from './Plugins/slider'
+import { PasswordStengthMeter } from './Plugins/PasswordStengthMeter'
 
 export class OlivePage {
     // formats: http://momentjs.com/docs/#/displaying/format/
@@ -110,7 +111,7 @@ export class OlivePage {
         $("[data-control=range-slider],[data-control=slider]").each((i, e) => new Slider($(e)).enable());
         $(".file-upload input:file").each((i, e) => this.enableFileUpload($(e)));
         $("[data-confirm-question]").each((i, e) => this.enableConfirmQuestion($(e)));
-        $(".password-strength").each((i, e) => this.enablePasswordStengthMeter($(e)));
+        $(".password-strength").each((i, e) => new PasswordStengthMeter($(e)).enable());
         $(".with-submenu").each((i, e) => this.enableSubMenus($(e)));
 
 
@@ -189,42 +190,6 @@ export class OlivePage {
         if (options) submenuOptions = this.toJson(options);
 
         menu.smartmenus(submenuOptions);
-    }
-
-    enablePasswordStengthMeter(container: any) {
-        // for configuration options : https://github.com/ablanco/jquery.pwstrength.bootstrap/blob/master/OPTIONS.md
-
-        if (container.find(".progress").length !== 0) return;
-
-        var formGroup = container.closest(".form-group");
-
-        var options = {
-            common: {},
-            rules: {},
-            ui: {
-                container: formGroup,
-                showVerdictsInsideProgressBar: true,
-                showStatus: true,
-                showPopover: false,
-                showErrors: false,
-                viewports: {
-                    progress: container
-                },
-                verdicts: [
-                    "<span class='fa fa-exclamation-triangle'></span> Weak",
-                    "<span class='fa fa-exclamation-triangle'></span> Normal",
-                    "Medium",
-                    "<span class='fa fa-thumbs-up'></span> Strong",
-                    "<span class='fa fa-thumbs-up'></span> Very Strong"],
-            }
-        };
-
-        var password = formGroup.find(":password");
-        if (password.length == 0) {
-            console.log('Error: no password field found for password strength.');
-            console.log(container);
-        }
-        else password.pwstrength(options);
     }
 
     ensureModalResize() {
